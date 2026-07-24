@@ -152,3 +152,14 @@ Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `
 Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
 Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
 Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
+Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
+Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
+Executing (default): INSERT INTO `categories` (`id`,`name`,`description`,`image`,`createdAt`,`updatedAt`) VALUES (DEFAULT,?,?,?,?,?);
+Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
+Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
+Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
+Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` WHERE `Category`.`id` = '10';
+Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` WHERE `Category`.`id` = '10';
+Executing (default): UPDATE `categories` SET `image`=?,`updatedAt`=? WHERE `id` = ?
+Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
+Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
