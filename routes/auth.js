@@ -1,0 +1,117 @@
+const express = require('express');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+const { AdminUser, Customer } = require('../models');
+const { authRequired } = require('../middleware/auth');
+
+const router = express.Router();
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+router.post('/login', async (req, res) => {
+  const email = req.body?.email?.toString().trim().toLowerCase();
+  const password = req.body?.password?.toString();
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
+
+  const user = await AdminUser.findOne({ where: { email } });
+  if (!user) {
+    return res.status(401).json({ error: 'Invalid email or password' });
+  }
+
+  const valid = await bcrypt.compare(password, user.passwordHash);
+  if (!valid) {
+    return res.status(401).json({ error: 'Invalid email or password' });
+  }
+
+  const token = jwt.sign(
+    { id: user.id, email: user.email, name: user.name },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
+  );
+
+  res.json({
+    token,
+    user: { id: user.id, name: user.name, email: user.email },
+  });
+});
+
+router.post('/google', async (req, res) => {
+  const idToken = req.body?.idToken;
+
+  if (!idToken) {
+    return res.status(400).json({ error: 'idToken is required' });
+  }
+
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return res.status(500).json({ error: 'Google sign-in is not configured' });
+  }
+
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    payload = ticket.getPayload();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid Google token' });
+  }
+
+  if (!payload?.sub || !payload?.email) {
+    return res.status(401).json({ error: 'Invalid Google token payload' });
+  }
+
+  let customer = await Customer.findOne({ where: { googleId: payload.sub } });
+
+  if (!customer) {
+    customer = await Customer.findOne({ where: { email: payload.email } });
+  }
+
+  if (customer) {
+    await customer.update({
+      googleId: payload.sub,
+      name: customer.name || payload.name || payload.email,
+      picture: payload.picture || customer.picture,
+    });
+  } else {
+    customer = await Customer.create({
+      googleId: payload.sub,
+      name: payload.name || payload.email,
+      email: payload.email,
+      picture: payload.picture,
+    });
+  }
+
+  const token = jwt.sign(
+    { id: customer.id, email: customer.email, name: customer.name },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
+  );
+
+  res.json({
+    token,
+    user: {
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
+      picture: customer.picture,
+    },
+  });
+});
+
+router.get('/me', authRequired, async (req, res) => {
+  const user = await AdminUser.findByPk(req.adminUser.id, {
+    attributes: ['id', 'name', 'email'],
+  });
+
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  res.json(user);
+});
+
+module.exports = router;
