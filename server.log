@@ -163,3 +163,11 @@ Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `
 Executing (default): UPDATE `categories` SET `image`=?,`updatedAt`=? WHERE `id` = ?
 Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
 Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
+Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
+Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
+Executing (default): INSERT INTO `categories` (`id`,`name`,`description`,`image`,`createdAt`,`updatedAt`) VALUES (DEFAULT,?,?,?,?,?);
+Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
+Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
+Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
+Executing (default): SELECT `id`, `name`, `description`, `image`, `createdAt`, `updatedAt` FROM `categories` AS `Category` ORDER BY `Category`.`id` DESC;
+Executing (default): SELECT `Product`.`id`, `Product`.`name`, `Product`.`description`, `Product`.`price`, `Product`.`category_id` AS `categoryId`, `Product`.`image`, `Product`.`createdAt`, `Product`.`updatedAt`, `category`.`id` AS `category.id`, `category`.`name` AS `category.name` FROM `products` AS `Product` LEFT OUTER JOIN `categories` AS `category` ON `Product`.`category_id` = `category`.`id` ORDER BY `Product`.`id` DESC;

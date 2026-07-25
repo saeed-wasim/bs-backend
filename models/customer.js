@@ -18,11 +18,21 @@ module.exports = (sequelize, DataTypes) => {
       },
       phone: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
       },
       city: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
+      },
+      googleId: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        unique: true,
+        field: 'google_id',
+      },
+      picture: {
+        type: DataTypes.STRING,
+        allowNull: true,
       },
     },
     {
