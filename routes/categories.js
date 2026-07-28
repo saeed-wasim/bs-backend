@@ -1,11 +1,15 @@
 const express = require('express');
 const { Category } = require('../models');
 const { authRequired } = require('../middleware/auth');
+const { wantsPagination, paginate } = require('../utils/paginate');
 
 const router = express.Router();
 
 router.get('/', async (req, res) => {
   const categories = await Category.findAll({ order: [['id', 'DESC']] });
+  if (wantsPagination(req)) {
+    return res.json(paginate(categories, req));
+  }
   res.json(categories);
 });
 

@@ -1,10 +1,9 @@
 const jwt = require('jsonwebtoken');
 
-function authRequired(req, res, next) {
-  if (process.env.REQUIRE_AUTH === 'false') {
-    return next();
-  }
-
+// Orders must always be tied to a real customer, so unlike authRequired this
+// does not honor REQUIRE_AUTH=false — that bypass exists for admin-only dev
+// convenience, but there's no meaningful "which customer" fallback here.
+function customerAuthRequired(req, res, next) {
   const header = req.headers.authorization || '';
   const [scheme, token] = header.split(' ');
 
@@ -14,14 +13,14 @@ function authRequired(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.role && decoded.role !== 'admin') {
+    if (decoded.role !== 'customer') {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
-    req.adminUser = decoded;
+    req.customer = decoded;
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 }
 
-module.exports = { authRequired };
+module.exports = { customerAuthRequired };

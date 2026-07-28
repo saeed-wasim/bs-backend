@@ -32,6 +32,34 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.TEXT('long'),
         allowNull: true,
       },
+      color: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      variantGroupId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'variant_group_id',
+      },
+      length: {
+        type: DataTypes.DECIMAL(6, 2),
+        allowNull: true,
+      },
+      width: {
+        type: DataTypes.DECIMAL(6, 2),
+        allowNull: true,
+      },
+      stock: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+      lowStockThreshold: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 5,
+        field: 'low_stock_threshold',
+      },
     },
     {
       tableName: 'products',

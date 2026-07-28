@@ -34,11 +34,19 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      street: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
     },
     {
       tableName: 'customers',
     }
   );
+
+  Customer.associate = (models) => {
+    Customer.hasMany(models.Order, { foreignKey: 'customerId', as: 'orders' });
+  };
 
   return Customer;
 };
