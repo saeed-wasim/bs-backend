@@ -6,6 +6,9 @@ const authRoutes = require('./routes/auth');
 const categoriesRoutes = require('./routes/categories');
 const productsRoutes = require('./routes/products');
 const customersRoutes = require('./routes/customers');
+const ordersRoutes = require('./routes/orders');
+const inventoryRoutes = require('./routes/inventory');
+const dashboardRoutes = require('./routes/dashboard');
 
 const app = express();
 const port = process.env.BACKEND_PORT || 3001;
@@ -22,6 +25,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/products', productsRoutes);
 app.use('/api/customers', customersRoutes);
+app.use('/api/orders', ordersRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });

@@ -27,7 +27,7 @@ router.post('/login', async (req, res) => {
   }
 
   const token = jwt.sign(
-    { id: user.id, email: user.email, name: user.name },
+    { id: user.id, email: user.email, name: user.name, role: 'admin' },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
   );
@@ -86,7 +86,7 @@ router.post('/google', async (req, res) => {
   }
 
   const token = jwt.sign(
-    { id: customer.id, email: customer.email, name: customer.name },
+    { id: customer.id, email: customer.email, name: customer.name, role: 'customer' },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
   );
