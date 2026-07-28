@@ -11,6 +11,10 @@ router.get('/', async (req, res) => {
   if (req.query.categoryId) {
     where.categoryId = parseInt(req.query.categoryId, 10);
   }
+  const search = req.query.search?.toString().trim();
+  if (search) {
+    where.name = { [Op.like]: `%${search}%` };
+  }
 
   const products = await Product.findAll({
     where,

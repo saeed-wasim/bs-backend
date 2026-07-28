@@ -50,6 +50,16 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: 'Processing',
         field: 'fulfillment_status',
       },
+      shippedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'shipped_at',
+      },
+      deliveredAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'delivered_at',
+      },
       addressName: {
         type: DataTypes.STRING,
         allowNull: true,
@@ -74,6 +84,21 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
         field: 'address_street',
+      },
+      stripeSessionId: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'stripe_session_id',
+      },
+      cardBrand: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'payment_card_brand',
+      },
+      cardLast4: {
+        type: DataTypes.STRING(4),
+        allowNull: true,
+        field: 'payment_card_last4',
       },
     },
     {

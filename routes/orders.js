@@ -1,92 +1,32 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { Order, OrderItem, Product, Customer, sequelize } = require('../models');
+const { Order, OrderItem, Customer } = require('../models');
 const { authRequired } = require('../middleware/auth');
 const { customerAuthRequired } = require('../middleware/customerAuth');
 const { wantsPagination, paginate } = require('../utils/paginate');
+const { buildOrder, HttpError } = require('../utils/orderBuilder');
 
 const router = express.Router();
-
-const GST_RATE = 0.03;
 
 router.post('/', customerAuthRequired, async (req, res) => {
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
   const address = req.body?.address || {};
   const paymentMethod = req.body?.paymentMethod?.toString().trim() || null;
 
-  if (items.length === 0) {
-    return res.status(400).json({ error: 'At least one item is required' });
-  }
-
-  const name = address.name?.toString().trim();
-  const phone = address.phone?.toString().trim();
-  const city = address.city?.toString().trim();
-  const street = address.street?.toString().trim();
-
-  if (!name || !phone || !city || !street) {
-    return res.status(400).json({ error: 'Delivery address (name, phone, city, street) is required' });
-  }
-
   const customer = await Customer.findByPk(req.customer.id);
   if (!customer) {
     return res.status(404).json({ error: 'Customer not found' });
   }
 
-  const productIds = items.map((item) => parseInt(item.productId, 10));
-  const products = await Product.findAll({ where: { id: productIds } });
-  const productsById = new Map(products.map((p) => [p.id, p]));
-
-  let subtotal = 0;
-  const orderItemsData = [];
-  for (const item of items) {
-    const product = productsById.get(parseInt(item.productId, 10));
-    if (!product) {
-      return res.status(400).json({ error: `Product ${item.productId} not found` });
+  let created;
+  try {
+    created = await buildOrder({ customer, items, address, paymentMethod, paymentStatus: 'Paid' });
+  } catch (err) {
+    if (err instanceof HttpError) {
+      return res.status(err.status).json({ error: err.message });
     }
-    const qty = Math.max(1, parseInt(item.qty, 10) || 1);
-    subtotal += parseFloat(product.price) * qty;
-    orderItemsData.push({
-      productId: product.id,
-      name: product.name,
-      image: product.image,
-      color: product.color,
-      size: item.size ? item.size.toString() : null,
-      price: product.price,
-      qty,
-    });
+    throw err;
   }
-
-  const gst = Math.round(subtotal * GST_RATE * 100) / 100;
-  const shipping = 0;
-  const total = subtotal + gst + shipping;
-
-  const created = await sequelize.transaction(async (t) => {
-    const order = await Order.create(
-      {
-        customerId: customer.id,
-        subtotal,
-        gst,
-        shipping,
-        total,
-        paymentMethod,
-        addressName: name,
-        addressPhone: phone,
-        addressEmail: customer.email,
-        addressCity: city,
-        addressStreet: street,
-      },
-      { transaction: t }
-    );
-
-    await OrderItem.bulkCreate(
-      orderItemsData.map((data) => ({ ...data, orderId: order.id })),
-      { transaction: t }
-    );
-
-    await customer.update({ name, phone, city, street }, { transaction: t });
-
-    return order;
-  });
 
   const full = await Order.findByPk(created.id, {
     include: [{ model: OrderItem, as: 'items' }],
@@ -95,11 +35,26 @@ router.post('/', customerAuthRequired, async (req, res) => {
   res.status(201).json(full);
 });
 
+router.get('/mine', customerAuthRequired, async (req, res) => {
+  const orders = await Order.findAll({
+    where: { customerId: req.customer.id },
+    order: [['id', 'DESC']],
+    include: [{ model: OrderItem, as: 'items' }],
+  });
+  res.json(orders);
+});
+
+// Must come before /:id so Express doesn't treat "new-count" as an order id.
+router.get('/new-count', authRequired, async (req, res) => {
+  const count = await Order.count({ where: { fulfillmentStatus: 'Processing' } });
+  res.json({ count });
+});
+
 router.get('/:id', async (req, res) => {
   const order = await Order.findByPk(req.params.id, {
     include: [
       { model: OrderItem, as: 'items' },
-      { model: Customer, as: 'customer', attributes: ['id', 'name', 'email', 'phone'] },
+      { model: Customer, as: 'customer', attributes: ['id', 'name', 'email', 'phone', 'picture'] },
     ],
   });
   if (!order) {
@@ -132,17 +87,63 @@ router.get('/:id', async (req, res) => {
   res.json(order);
 });
 
+const FULFILLMENT_STATUSES = ['Processing', 'Shipped', 'Delivered'];
+
+router.patch('/:id/status', authRequired, async (req, res) => {
+  const status = req.body?.status?.toString();
+  if (!FULFILLMENT_STATUSES.includes(status)) {
+    return res.status(400).json({ error: `Status must be one of: ${FULFILLMENT_STATUSES.join(', ')}` });
+  }
+
+  const order = await Order.findByPk(req.params.id);
+  if (!order) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+
+  const now = new Date();
+  const updates = { fulfillmentStatus: status };
+  if (status === 'Processing') {
+    updates.shippedAt = null;
+    updates.deliveredAt = null;
+  } else if (status === 'Shipped') {
+    // Backfill so a stage skipped on the way here still gets a real timestamp
+    // instead of inheriting whatever time the current stage was set.
+    updates.shippedAt = order.shippedAt || now;
+    updates.deliveredAt = null;
+  } else if (status === 'Delivered') {
+    updates.shippedAt = order.shippedAt || now;
+    updates.deliveredAt = now;
+  }
+
+  await order.update(updates);
+
+  const full = await Order.findByPk(order.id, {
+    include: [
+      { model: OrderItem, as: 'items' },
+      { model: Customer, as: 'customer', attributes: ['id', 'name', 'email', 'phone', 'picture'] },
+    ],
+  });
+
+  res.json(full);
+});
+
 router.get('/', authRequired, async (req, res) => {
   const orders = await Order.findAll({
     order: [['id', 'DESC']],
     include: [
       { model: OrderItem, as: 'items' },
-      { model: Customer, as: 'customer', attributes: ['id', 'name', 'email', 'phone'] },
+      { model: Customer, as: 'customer', attributes: ['id', 'name', 'email', 'phone', 'picture'] },
     ],
   });
 
   if (wantsPagination(req)) {
-    return res.json(paginate(orders, req));
+    const result = paginate(orders, req);
+    // Revenue must reflect every paid order, not just the current page's
+    // slice, so it's totaled from the full set before paginate() slices it.
+    result.totalRevenue = orders
+      .filter((o) => o.paymentStatus === 'Paid')
+      .reduce((sum, o) => sum + Number(o.total), 0);
+    return res.json(result);
   }
   res.json(orders);
 });
