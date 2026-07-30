@@ -60,6 +60,12 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: 5,
         field: 'low_stock_threshold',
       },
+      isGiftGuide: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        field: 'is_gift_guide',
+      },
     },
     {
       tableName: 'products',

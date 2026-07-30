@@ -1,10 +1,36 @@
 const express = require('express');
-const { Op } = require('sequelize');
-const { Product, Category } = require('../models');
+const { Op, fn, col, literal } = require('sequelize');
+const { Product, Category, OrderItem, sequelize } = require('../models');
 const { authRequired } = require('../middleware/auth');
 const { wantsPagination, paginate } = require('../utils/paginate');
 
 const router = express.Router();
+
+// Must come before /:id so Express doesn't treat "best-sellers" as a product id.
+router.get('/best-sellers', async (req, res) => {
+  const limit = req.query.limit ? Math.max(1, parseInt(req.query.limit, 10) || 20) : 20;
+
+  const sold = await OrderItem.findAll({
+    attributes: ['productId', [fn('SUM', col('qty')), 'totalSold']],
+    where: { productId: { [Op.ne]: null } },
+    group: ['productId'],
+    order: [[literal('totalSold'), 'DESC']],
+    limit,
+    raw: true,
+  });
+
+  const productIds = sold.map((row) => row.productId);
+  const products = await Product.findAll({
+    where: { id: productIds },
+    include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }],
+  });
+  const productsById = new Map(products.map((p) => [p.id, p]));
+
+  // Re-apply the sales-ranked order — findAll's `where: { id: [...] }` doesn't
+  // preserve it.
+  const ranked = productIds.map((id) => productsById.get(id)).filter(Boolean);
+  res.json(ranked);
+});
 
 router.get('/', async (req, res) => {
   const where = {};
@@ -14,6 +40,14 @@ router.get('/', async (req, res) => {
   const search = req.query.search?.toString().trim();
   if (search) {
     where.name = { [Op.like]: `%${search}%` };
+  }
+  if (req.query.giftGuide === 'true') {
+    where.isGiftGuide = true;
+  }
+  if (req.query.newArrivals === 'true') {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    where.createdAt = { [Op.gte]: sevenDaysAgo };
   }
 
   const products = await Product.findAll({
@@ -62,6 +96,7 @@ router.post('/', authRequired, async (req, res) => {
     req.body?.lowStockThreshold !== undefined && req.body.lowStockThreshold !== ''
       ? Math.max(0, parseInt(req.body.lowStockThreshold, 10) || 0)
       : 5;
+  const isGiftGuide = req.body?.isGiftGuide === true || req.body?.isGiftGuide === 'true';
 
   if (!name || !description || price === undefined || !categoryId) {
     return res.status(400).json({ error: 'Name, description, price, and category are required' });
@@ -84,6 +119,7 @@ router.post('/', authRequired, async (req, res) => {
     width,
     stock,
     lowStockThreshold,
+    isGiftGuide,
   });
   res.status(201).json(product);
 });
@@ -127,6 +163,9 @@ router.put('/:id', authRequired, async (req, res) => {
   }
   if ('lowStockThreshold' in (req.body || {})) {
     product.lowStockThreshold = Math.max(0, parseInt(req.body.lowStockThreshold, 10) || 0);
+  }
+  if ('isGiftGuide' in (req.body || {})) {
+    product.isGiftGuide = req.body.isGiftGuide === true || req.body.isGiftGuide === 'true';
   }
   await product.save();
 

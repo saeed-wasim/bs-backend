@@ -100,6 +100,10 @@ router.patch('/:id/status', authRequired, async (req, res) => {
     return res.status(404).json({ error: 'Order not found' });
   }
 
+  if (order.paymentStatus !== 'Paid' && status !== 'Processing') {
+    return res.status(400).json({ error: 'Cannot ship or deliver an order until payment is confirmed' });
+  }
+
   const now = new Date();
   const updates = { fulfillmentStatus: status };
   if (status === 'Processing') {
