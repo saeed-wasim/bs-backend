@@ -1,4 +1,5 @@
 const express = require('express');
+const { Op } = require('sequelize');
 const { Customer, Order, OrderItem, Product, Category, sequelize } = require('../models');
 const { authRequired } = require('../middleware/auth');
 const { customerAuthRequired } = require('../middleware/customerAuth');
@@ -43,7 +44,19 @@ router.put('/me', customerAuthRequired, async (req, res) => {
 router.use(authRequired);
 
 router.get('/', async (req, res) => {
-  const customers = await Customer.findAll({ order: [['id', 'ASC']] });
+  const search = req.query.search?.toString().trim();
+  const where = search
+    ? {
+        [Op.or]: [
+          { name: { [Op.like]: `%${search}%` } },
+          { email: { [Op.like]: `%${search}%` } },
+          { phone: { [Op.like]: `%${search}%` } },
+          { city: { [Op.like]: `%${search}%` } },
+        ],
+      }
+    : {};
+
+  const customers = await Customer.findAll({ where, order: [['id', 'ASC']] });
 
   const orderStats = await Order.findAll({
     attributes: [

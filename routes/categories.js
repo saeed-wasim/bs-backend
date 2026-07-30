@@ -1,4 +1,5 @@
 const express = require('express');
+const { Op } = require('sequelize');
 const { Category } = require('../models');
 const { authRequired } = require('../middleware/auth');
 const { wantsPagination, paginate } = require('../utils/paginate');
@@ -6,7 +7,17 @@ const { wantsPagination, paginate } = require('../utils/paginate');
 const router = express.Router();
 
 router.get('/', async (req, res) => {
-  const categories = await Category.findAll({ order: [['id', 'DESC']] });
+  const search = req.query.search?.toString().trim();
+  const where = search
+    ? {
+        [Op.or]: [
+          { name: { [Op.like]: `%${search}%` } },
+          { description: { [Op.like]: `%${search}%` } },
+        ],
+      }
+    : {};
+
+  const categories = await Category.findAll({ where, order: [['id', 'DESC']] });
   if (wantsPagination(req)) {
     return res.json(paginate(categories, req));
   }

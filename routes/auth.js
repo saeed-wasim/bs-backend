@@ -38,6 +38,92 @@ router.post('/login', async (req, res) => {
   });
 });
 
+router.post('/register', async (req, res) => {
+  const name = req.body?.name?.toString().trim();
+  const email = req.body?.email?.toString().trim().toLowerCase();
+  const password = req.body?.password?.toString();
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'Name, email and password are required' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+
+  let customer = await Customer.findOne({ where: { email } });
+  if (customer?.passwordHash) {
+    return res.status(409).json({ error: 'An account with this email already exists' });
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  if (customer) {
+    // Account was created via Google sign-in previously — attach a password
+    // so the same customer can also log in with email/password.
+    await customer.update({ passwordHash, name: customer.name || name });
+  } else {
+    customer = await Customer.create({ name, email, passwordHash });
+  }
+
+  const token = jwt.sign(
+    { id: customer.id, email: customer.email, name: customer.name, role: 'customer' },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
+  );
+
+  res.json({
+    token,
+    user: {
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
+      picture: customer.picture,
+    },
+  });
+});
+
+router.post('/customer-login', async (req, res) => {
+  const email = req.body?.email?.toString().trim().toLowerCase();
+  const password = req.body?.password?.toString();
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
+
+  const customer = await Customer.findOne({ where: { email } });
+  if (!customer) {
+    return res.status(401).json({ error: 'Invalid email or password' });
+  }
+  if (!customer.passwordHash) {
+    // This account was created via Google sign-in and has no password set —
+    // "Invalid email or password" would be misleading since the email is valid.
+    return res.status(401).json({
+      error: 'This account signs in with Google. Use the Google button below, or register with this email to set a password.',
+    });
+  }
+
+  const valid = await bcrypt.compare(password, customer.passwordHash);
+  if (!valid) {
+    return res.status(401).json({ error: 'Invalid email or password' });
+  }
+
+  const token = jwt.sign(
+    { id: customer.id, email: customer.email, name: customer.name, role: 'customer' },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
+  );
+
+  res.json({
+    token,
+    user: {
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
+      picture: customer.picture,
+    },
+  });
+});
+
 router.post('/google', async (req, res) => {
   const idToken = req.body?.idToken;
 

@@ -33,6 +33,21 @@ router.get('/summary', async (req, res) => {
   res.json(summary);
 });
 
+router.get('/todays-arrivals', async (req, res) => {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  const products = await Product.findAll({
+    where: { createdAt: { [Op.gte]: start, [Op.lt]: end } },
+    order: [['createdAt', 'DESC']],
+    include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }],
+  });
+
+  res.json(products.map((p) => ({ ...p.toJSON(), status: statusOf(p) })));
+});
+
 router.get('/', async (req, res) => {
   const search = req.query.search?.toString().trim();
   const statusFilter = req.query.status?.toString();

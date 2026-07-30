@@ -34,6 +34,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      passwordHash: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'password_hash',
+      },
       street: {
         type: DataTypes.STRING,
         allowNull: true,

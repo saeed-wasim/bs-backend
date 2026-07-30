@@ -1,5 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const { Op } = require('sequelize');
 const { Order, OrderItem, Customer } = require('../models');
 const { authRequired } = require('../middleware/auth');
 const { customerAuthRequired } = require('../middleware/customerAuth');
@@ -132,7 +133,19 @@ router.patch('/:id/status', authRequired, async (req, res) => {
 });
 
 router.get('/', authRequired, async (req, res) => {
+  const search = req.query.search?.toString().trim();
+  const where = {};
+  if (search) {
+    const numericId = parseInt(search.replace(/\D/g, ''), 10);
+    where[Op.or] = [
+      { '$customer.name$': { [Op.like]: `%${search}%` } },
+      { '$customer.email$': { [Op.like]: `%${search}%` } },
+      ...(Number.isNaN(numericId) ? [] : [{ id: numericId }]),
+    ];
+  }
+
   const orders = await Order.findAll({
+    where,
     order: [['id', 'DESC']],
     include: [
       { model: OrderItem, as: 'items' },
