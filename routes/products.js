@@ -6,6 +6,21 @@ const { wantsPagination, paginate } = require('../utils/paginate');
 
 const router = express.Router();
 
+function normalizeSubcategories(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => item.toString().trim()).filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
 // Must come before /:id so Express doesn't treat "best-sellers" as a product id.
 router.get('/best-sellers', async (req, res) => {
   const limit = req.query.limit ? Math.max(1, parseInt(req.query.limit, 10) || 20) : 20;
@@ -37,6 +52,7 @@ router.get('/', async (req, res) => {
   if (req.query.categoryId) {
     where.categoryId = parseInt(req.query.categoryId, 10);
   }
+  const subcategory = req.query.subcategory?.toString().trim();
   const search = req.query.search?.toString().trim();
   if (search) {
     where.name = { [Op.like]: `%${search}%` };
@@ -52,14 +68,39 @@ router.get('/', async (req, res) => {
 
   const products = await Product.findAll({
     where,
-    order: [['id', 'DESC']],
+    order: [['sortOrder', 'ASC'], ['id', 'DESC']],
     include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }],
   });
 
+  const filteredProducts = subcategory
+    ? products.filter((product) => (product.subcategories || []).includes(subcategory))
+    : products;
+
   if (wantsPagination(req)) {
-    return res.json(paginate(products, req));
+    return res.json(paginate(filteredProducts, req));
   }
-  res.json(products);
+  res.json(filteredProducts);
+});
+
+router.patch('/reorder', authRequired, async (req, res) => {
+  const order = Array.isArray(req.body?.order) ? req.body.order : [];
+  if (!order.length) {
+    return res.status(400).json({ error: 'order array is required' });
+  }
+
+  const products = await Product.findAll({ where: { id: order } });
+  const map = new Map(products.map((product) => [product.id, product]));
+
+  await Promise.all(
+    order.map((id, index) => {
+      const product = map.get(Number(id));
+      if (!product) return null;
+      product.sortOrder = index;
+      return product.save();
+    })
+  );
+
+  res.json({ success: true });
 });
 
 router.get('/:id', async (req, res) => {
@@ -86,6 +127,7 @@ router.post('/', authRequired, async (req, res) => {
   const description = req.body?.description?.toString().trim();
   const price = req.body?.price;
   const categoryId = req.body?.categoryId;
+  const subcategories = normalizeSubcategories(req.body?.subcategories);
   const image = req.body?.image ?? null;
   const color = req.body?.color?.toString().trim() || null;
   const variantGroupId = req.body?.variantGroupId ? parseInt(req.body.variantGroupId, 10) : null;
@@ -112,6 +154,7 @@ router.post('/', authRequired, async (req, res) => {
     description,
     price: parseFloat(price),
     categoryId: parseInt(categoryId, 10),
+    subcategories,
     image,
     color,
     variantGroupId,
@@ -134,6 +177,7 @@ router.put('/:id', authRequired, async (req, res) => {
   const description = req.body?.description?.toString().trim();
   const price = req.body?.price;
   const categoryId = req.body?.categoryId;
+  const subcategories = normalizeSubcategories(req.body?.subcategories);
 
   if (!name || !description || price === undefined || !categoryId) {
     return res.status(400).json({ error: 'Name, description, price, and category are required' });
@@ -143,6 +187,7 @@ router.put('/:id', authRequired, async (req, res) => {
   product.description = description;
   product.price = parseFloat(price);
   product.categoryId = parseInt(categoryId, 10);
+  product.subcategories = subcategories;
   if ('image' in (req.body || {})) {
     product.image = req.body.image || null;
   }
