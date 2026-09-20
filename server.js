@@ -1,4 +1,8 @@
 require('dotenv').config();
+// Some cloud networks (Railway included) have flaky IPv6 egress even though
+// IPv4 works fine — this makes Node try IPv4 first for all outbound
+// connections, avoiding intermittent hangs on services like Stripe's API.
+require('dns').setDefaultResultOrder('ipv4first');
 const express = require('express');
 const cors = require('cors');
 const { sequelize } = require('./models');

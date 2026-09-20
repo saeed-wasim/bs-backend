@@ -1,4 +1,5 @@
 const express = require('express');
+const https = require('https');
 const Stripe = require('stripe');
 const { Order, OrderItem, Customer } = require('../models');
 const { customerAuthRequired } = require('../middleware/customerAuth');
@@ -9,6 +10,11 @@ const router = express.Router();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY, {
   maxNetworkRetries: 3,
   timeout: 20000,
+  // A reused keep-alive connection is the one thing that differs between
+  // Stripe SDK calls (which fail intermittently) and a one-off request
+  // (which succeeds immediately) — disabling it trades a little latency for
+  // never reusing a socket that might have gone stale.
+  httpAgent: new https.Agent({ keepAlive: false }),
 });
 const currency = process.env.STRIPE_CURRENCY || 'usd';
 
