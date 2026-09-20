@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Shared Express + Sequelize + MySQL backend for bin-saleem-jewellery (admin) and bs-user (storefront)",
   "main": "server.js",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",

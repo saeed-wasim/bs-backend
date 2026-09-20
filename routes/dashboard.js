@@ -28,6 +28,7 @@ async function buildRevenueSeries(range) {
       `SELECT HOUR(createdAt) AS bucket, SUM(total) AS revenue, COUNT(*) AS orders
        FROM orders
        WHERE createdAt >= CURDATE() AND createdAt < CURDATE() + INTERVAL 1 DAY
+         AND payment_status = 'Paid'
        GROUP BY bucket`,
       { type: sequelize.QueryTypes.SELECT }
     );
@@ -45,6 +46,7 @@ async function buildRevenueSeries(range) {
        FROM orders
        WHERE createdAt >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)
          AND createdAt < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) + INTERVAL 7 DAY
+         AND payment_status = 'Paid'
        GROUP BY bucket`,
       { type: sequelize.QueryTypes.SELECT }
     );
@@ -68,6 +70,7 @@ async function buildRevenueSeries(range) {
        FROM orders
        WHERE createdAt >= DATE_FORMAT(NOW(), '%Y-%m-01')
          AND createdAt < DATE_FORMAT(NOW(), '%Y-%m-01') + INTERVAL 1 MONTH
+         AND payment_status = 'Paid'
        GROUP BY bucket`,
       { type: sequelize.QueryTypes.SELECT }
     );
@@ -88,6 +91,7 @@ async function buildRevenueSeries(range) {
        FROM orders
        WHERE createdAt >= DATE_FORMAT(NOW(), '%Y-01-01')
          AND createdAt < DATE_FORMAT(NOW(), '%Y-01-01') + INTERVAL 1 YEAR
+         AND payment_status = 'Paid'
        GROUP BY bucket`,
       { type: sequelize.QueryTypes.SELECT }
     );
@@ -106,6 +110,7 @@ async function buildRevenueSeries(range) {
     `SELECT DATE_FORMAT(createdAt, '%Y-%m') AS bucket, SUM(total) AS revenue, COUNT(*) AS orders
      FROM orders
      WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+       AND payment_status = 'Paid'
      GROUP BY bucket
      ORDER BY bucket ASC`,
     { type: sequelize.QueryTypes.SELECT }
@@ -125,7 +130,7 @@ router.get('/summary', async (req, res) => {
     Order.count(),
     Customer.count(),
     Product.count(),
-    Order.sum('total'),
+    Order.sum('total', { where: { paymentStatus: 'Paid' } }),
     Product.findAll({ attributes: ['stock', 'lowStockThreshold'] }),
     Order.findAll({
       order: [['id', 'DESC']],
