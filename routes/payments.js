@@ -6,7 +6,10 @@ const { buildOrder, HttpError } = require('../utils/orderBuilder');
 const { getCardDetails } = require('../utils/stripeCard');
 
 const router = express.Router();
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY, {
+  maxNetworkRetries: 3,
+  timeout: 20000,
+});
 const currency = process.env.STRIPE_CURRENCY || 'usd';
 
 // Shared by both the initial checkout and the "resume payment" route, so a
