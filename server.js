@@ -15,7 +15,7 @@ const paymentsRoutes = require('./routes/payments');
 const stripeWebhookHandler = require('./routes/stripeWebhook');
 
 const app = express();
-const port = process.env.BACKEND_PORT || 3001;
+const port = process.env.PORT || process.env.BACKEND_PORT || 3001;
 const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean);
 
 app.use(cors({ origin: allowedOrigins.length ? allowedOrigins : true }));
