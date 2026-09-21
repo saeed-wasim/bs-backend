@@ -21,7 +21,9 @@ router.post('/', customerAuthRequired, async (req, res) => {
 
   let created;
   try {
-    created = await buildOrder({ customer, items, address, paymentMethod, paymentStatus: 'Paid' });
+    // Card payments go through /api/payments/create-checkout-session instead —
+    // this route only ever places Cash on Delivery orders.
+    created = await buildOrder({ customer, items, address, paymentMethod, paymentStatus: 'COD' });
   } catch (err) {
     if (err instanceof HttpError) {
       return res.status(err.status).json({ error: err.message });
